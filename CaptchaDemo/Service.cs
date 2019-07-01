@@ -178,28 +178,32 @@ namespace CaptchaDemo
             fs.Close();
             return byData;
         }
-        public static TFGraph ImConvertGraph(TFTensor image, out TFOutput input, out TFOutput output)
+       public static TFGraph ImConvertGraph(out TFOutput input, out TFOutput output)
         {
             var graph = new TFGraph();
             input = graph.Placeholder(TFDataType.String);
+
             List<int> resize = config.Pretreatment.Resize != null ? config.Pretreatment.Resize : new List<int> { config.Model.ImageWidth, config.Model.ImageHeight };
             int W = resize[0];
             int H = resize[1];
-            TFOutput src = graph.Cast(graph.DecodePng(contents: input, channels: 1), DstT: TFDataType.Float);
-            TFOutput origin = graph.Reshape(src, graph.Const(new int[] { H, W }));
-            TFOutput swapaxes = graph.Transpose(origin, graph.Const(new int[] { 1, 0 }));
-            output = graph.Div(
-                graph.Reshape(swapaxes, graph.Const(new int[] { W, H, 1 })),
-                y: graph.Const((float)255)
-                );
-            output = graph.ExpandDims(output, dim: graph.Const(0));
+
+            var image_reader = graph.DecodeJpeg(contents: input, channels: 1);
+            var _dims_expander = graph.ExpandDims(image_reader, graph.Const(0));
+            var _resize = graph.ResizeArea(_dims_expander, graph.Const(new int[] { H, W }));
+            var _reshape = graph.Reshape(graph.Cast(_resize, TFDataType.Float), graph.Const(new int[] { H, W }));
+            var transpose = graph.Transpose(_reshape, graph.Const(new int[] { 1, 0 }));
+            var resized = graph.Reshape(transpose, graph.Const(new int[] { W, H, 1 }));
+            var dims_expander = graph.ExpandDims(resized, graph.Const(0));
+
+            output = graph.Div(dims_expander, graph.Const(255));
+
             return graph;
         }
-        public static TFTensor FormatJPEG(byte[] d)
+        public static TFTensor FormatJPEG(byte[] buffer)
         {
-            var g = TFTensor.CreateString(d);
+            var g = TFTensor.CreateString(buffer);
             TFOutput input, output;
-            using (var graph = ImConvertGraph(g, out input, out output))
+            using (var graph = ImConvertGraph(out input, out output))
             {
                 using (var session = new TFSession(graph))
                 {
