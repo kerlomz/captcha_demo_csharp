@@ -22,7 +22,7 @@ namespace CaptchaDemo
 
         public static List<string> charset = new List<string>();
 
-        public static Tuple<TFSession, TFOutput, TFOutput> init = Init("./model/model.yaml");
+        public static Tuple<TFSession, TFOutput, TFOutput> init = Init("./model.yaml");
         public static TFSession tf = init.Item1;
         public static TFOutput opInput = init.Item2;
         public static TFOutput opDenseDecode = init.Item3;
@@ -66,7 +66,7 @@ namespace CaptchaDemo
 
             if (!System.IO.File.Exists(configPath))
             {
-                Console.WriteLine("Error! Can not find ./model/model.yaml file!");
+                Console.WriteLine("Error! Can not find ./model.yaml file!");
                 return false;
             }
             else
@@ -86,11 +86,11 @@ namespace CaptchaDemo
                 return new Tuple<TFSession, TFOutput, TFOutput>(null, new TFOutput(), new TFOutput());
             }
 
-            if (config.Model.CharSet.GetType() == typeof(List<object>))
+            if (config.FieldParam.Category.GetType() == typeof(List<object>))
             {
 
                 charset.Add("");
-                List<object> customizedCharset = (List<object>)config.Model.CharSet;
+                List<object> customizedCharset = (List<object>)config.FieldParam.Category;
                 for (int i = 0; i < customizedCharset.Count; i++)
                 {
                     charset.Add((string)customizedCharset[i]);
@@ -99,7 +99,7 @@ namespace CaptchaDemo
             }
             else
             {
-                var charsetConfig = (string)config.Model.CharSet;
+                var charsetConfig = (string)config.FieldParam.Category;
                 switch (charsetConfig) {
                     case ALPHANUMERIC:
                         charset = Constants.Alphanumeric;
@@ -127,7 +127,7 @@ namespace CaptchaDemo
             }
 
             var graph = new TFGraph();
-            var file = File.ReadAllBytes(string.Format("model/{0}.pb", config.Model.ModelName));
+            var file = File.ReadAllBytes(string.Format("./{0}.pb", config.Model.ModelName));
             graph.Import(file);
             var opInput = graph["input"][0];
             var opDenseDecode = graph["dense_decoded"][0];
@@ -164,7 +164,7 @@ namespace CaptchaDemo
 
         static void Main(string[] args)
         {
-            string path = "test.png";
+            string path = "test.jpg";
             byte[] ImgBytes = GetPictureData(path);
             string result = Predict(ImgBytes);
             Console.WriteLine(result);
@@ -182,7 +182,7 @@ namespace CaptchaDemo
         {
             var graph = new TFGraph();
             input = graph.Placeholder(TFDataType.String);
-            List<int> resize = config.Pretreatment.Resize != null ? config.Pretreatment.Resize : new List<int> { config.Model.ImageWidth, config.Model.ImageHeight };
+            List<int> resize = config.FieldParam.Resize != null ? config.FieldParam.Resize : new List<int> { config.FieldParam.ImageWidth, config.FieldParam.ImageHeight };
             int W = resize[0];
             int H = resize[1];
             TFOutput src = graph.Cast(graph.DecodePng(contents: input, channels: 1), DstT: TFDataType.Float);
